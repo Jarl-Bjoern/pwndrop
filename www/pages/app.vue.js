@@ -340,31 +340,13 @@ var appHome = Vue.component("app-home", {
     <!-- ========================= -->
 
     <div class="bg-logo"></div>
-
-
-    <!-- ========================= -->
-    <!-- MAIN CONTENT              -->
-    <!-- ========================= -->
-
     <div class="container">
-
-
-        <div
-            v-if="isDead"
-            class="text-center"
-        >
-
+        <div v-if="isDead" class="text-center">
             <span class="big-icon">
                 <i class="fas fa-dizzy"></i>
             </span>
-
         </div>
-
-        <div
-            v-else-if="!isLoaded"
-        >
-        </div>
-
+        <div v-else-if="!isLoaded"></div>
         <div v-else>
             <router-view></router-view>
         </div>
@@ -372,14 +354,11 @@ var appHome = Vue.component("app-home", {
 </div>
 `,
 
-
     $_veeValidate: {
         validator: "new"
     },
 
-
     name: "app",
-
 
     /* ========================= */
     /* DATA                       */
