@@ -30,23 +30,12 @@ var appHome = Vue.component("app-home", {
 
     <!-- TITLE -->
     <div class="bg-title">
-        <a href="/">
-            <img
-                src="pages/img/pwndrop-title.png"
-                alt="pwndrop title"
-            />
-        </a>
+		<a href="/"><img src="pages/img/pwndrop-title.png" alt="pwndrop title" /></a>
     </div>
 
     <!-- FOOTER -->
     <div class="bg-footer">
-        made by
-        <a
-            href="https://twitter.com/mrgretzky"
-            target="_blank"
-        >
-            @mrgretzky
-        </a>
+        made by <a href="https://twitter.com/mrgretzky" target="_blank">@mrgretzky</a>
     </div>
 
     <!-- VERSION -->
