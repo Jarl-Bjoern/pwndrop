@@ -69,3 +69,71 @@ func ConfigUpdateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	DumpResponse(w, "ok", http.StatusOK, 0, ret)
 }
+
+func ApiTokenGetHandler(w http.ResponseWriter, r *http.Request) {
+	_, err := AuthSession(r)
+	if err != nil {
+		DumpResponse(w, "unauthorized", http.StatusUnauthorized, API_ERROR_BAD_AUTHENTICATION, nil)
+		return
+	}
+	token, err := EnsureApiToken()
+	if err != nil {
+		DumpResponse(w, err.Error(), http.StatusInternalServerError, API_ERROR_FILE_DATABASE_FAILED, nil)
+		return
+	}
+	type Response struct {
+		Token string `json:"token"`
+	}
+	DumpResponse(w, "ok", http.StatusOK, 0, &Response{Token: token})
+}
+
+func ApiTokenRegenHandler(w http.ResponseWriter, r *http.Request) {
+	_, err := AuthSession(r)
+	if err != nil {
+		DumpResponse(w, "unauthorized", http.StatusUnauthorized, API_ERROR_BAD_AUTHENTICATION, nil)
+		return
+	}
+	o, err := storage.ConfigGet(1)
+	if err != nil {
+		DumpResponse(w, err.Error(), http.StatusInternalServerError, API_ERROR_FILE_DATABASE_FAILED, nil)
+		return
+	}
+	o.ApiToken = utils.GenRandomHash()
+	_, err = storage.ConfigUpdate(1, o)
+	if err != nil {
+		DumpResponse(w, err.Error(), http.StatusInternalServerError, API_ERROR_FILE_DATABASE_FAILED, nil)
+		return
+	}
+	type Response struct {
+		Token string `json:"token"`
+	}
+	DumpResponse(w, "ok", http.StatusOK, 0, &Response{Token: o.ApiToken})
+}
+
+// EnsureApiToken returns existing token or generates one if missing.
+func EnsureApiToken() (string, error) {
+	o, err := storage.ConfigGet(1)
+	if err != nil {
+		return "", err
+	}
+	if o.ApiToken == "" {
+		o.ApiToken = utils.GenRandomHash()
+		if _, err = storage.ConfigUpdate(1, o); err != nil {
+			return "", err
+		}
+	}
+	return o.ApiToken, nil
+}
+
+// CheckApiToken validates the Authorization header token.
+func CheckApiToken(r *http.Request) bool {
+	token := r.Header.Get("Authorization")
+	if token == "" {
+		return false
+	}
+	expected, err := EnsureApiToken()
+	if err != nil {
+		return false
+	}
+	return token == expected
+}

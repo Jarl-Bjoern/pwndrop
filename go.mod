@@ -12,6 +12,7 @@ require (
 	github.com/shirou/gopsutil v2.19.12+incompatible
 	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa
 	golang.org/x/net v0.0.0-20211112202133-69e39bad7dc2
+	golang.org/x/term v0.0.0-20201126162022-7de9c90e9dd1
 	gopkg.in/ini.v1 v1.42.0
 )
 

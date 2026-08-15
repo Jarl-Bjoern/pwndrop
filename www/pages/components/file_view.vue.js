@@ -105,6 +105,47 @@ var appFileView = Vue.component("app-file-view", {
                         </div>
 					</div>
 				</div>
+				<div class="form-group row">
+					<label for="edit-folder" class="col-sm-3 col-form-label label-help">Folder:
+                        <i class="fas fa-question-circle label-qmark" v-tooltip:bottom="'Assign file to a folder for visual grouping'"></i>
+                    </label>
+					<div class="col-sm-9">
+						<select class="form-control" id="edit-folder" v-model="file_edit.folder_id">
+							<option :value="0">— No folder —</option>
+							<option v-for="f in folders" :key="f.id" :value="f.id">{{ f.name }}</option>
+						</select>
+					</div>
+				</div>
+				<div class="form-group row">
+					<label for="edit-max-downloads" class="col-sm-3 col-form-label label-help">Download limit:
+                        <i class="fas fa-question-circle label-qmark" v-tooltip:bottom="'Maximum number of downloads. 0 = unlimited'"></i>
+                    </label>
+					<div class="col-sm-9">
+						<input
+							type="number"
+							class="form-control"
+							id="edit-max-downloads"
+							min="0"
+							v-model.number="file_edit.max_downloads"
+							placeholder="0 = unlimited"
+						>
+					</div>
+				</div>
+				<div class="form-group row">
+					<label for="edit-comment" class="col-sm-3 col-form-label label-help">Comment:
+                        <i class="fas fa-question-circle label-qmark" v-tooltip:bottom="'Optional note visible to all users'"></i>
+                    </label>
+					<div class="col-sm-9">
+						<input
+							type="text"
+							class="form-control"
+							id="edit-comment"
+							spellcheck="false"
+							v-model="file_edit.comment"
+							placeholder="Optional comment..."
+						>
+					</div>
+				</div>
 				<hr>
 				<transition name="sub-modal-anim" mode="out-in">
 					<div class="row" v-if="file_edit.sub_progress < 100" key="uploading">
@@ -203,6 +244,22 @@ var appFileView = Vue.component("app-file-view", {
 				</transition>
 			</form>
 		</b-modal>
+
+		<!-- Folder create modal -->
+		<b-modal
+			v-model="folderCreateShow"
+			id="folder-create-modal"
+			title="New Folder"
+			hide-header
+			ok-title="Create"
+			@ok.prevent="createFolder()"
+		>
+			<div class="form-group">
+				<label>Folder name</label>
+				<input type="text" class="form-control" v-model="newFolderName" placeholder="Folder name..." @keyup.enter="createFolder()">
+			</div>
+		</b-modal>
+
 		<div
 			id="dropzone"
 			:class="[isDragging ? 'drag' : '']"
@@ -221,28 +278,52 @@ var appFileView = Vue.component("app-file-view", {
 				</form>
 			</div>
         </div>
-        <div class="curl-cmd">
-	   <a class="btn-copy" ref="copyCurlUpload" href @click.prevent="copyCurl()">
-   		<button class="btn btn-outline-success btn-copy-link col-xs-12 col-sm-8 offset-sm-2 col-md-6 offset-md-3" v-tooltip:bottom="'Copy cURL command'">
-        		<i class="fas fa-copy" style="margin-right: 5px"></i>Upload via cURL command
-   		 </button>
-   	    </a>
+		
+		<div class="curl-cmd">
+			<a class="btn-copy" ref="copyCurlUpload" href @click.prevent="copyCurl()">
+				<button class="btn btn-outline-success btn-copy-link col-xs-12 col-sm-8 offset-sm-2 col-md-6 offset-md-3" v-tooltip:bottom="'Copy cURL command'">
+						<i class="fas fa-copy" style="margin-right: 5px"></i>Upload via cURL command
+				 </button>
+			</a>
         </div>
-        <div class="row row-info">
+		
+        <div class="row row-info" style="margin: 10px 0;">
             <div class="server-status col-xs-12 col-sm-8 offset-sm-2 col-md-6 offset-md-3">
                 free: <strong>{{ server_info.disk_free | prettyBytes }}</strong> &bull; used: <strong>{{ server_info.disk_used | prettyBytes }}</strong>
             </div>
         </div>
-		<!-- 		<button @click="doShuffle()">Shuffle</button>
-		-->
+
+		<!-- Folder tabs -->
+		<div class="row" style="margin: 10px 0;">
+			<div class="col-xs-12 col-sm-8 offset-sm-2 col-md-6 offset-md-3">
+				<div style="display:flex; flex-wrap:wrap; gap:6px; align-items:center;">
+					<span class="folder-tag" :class="{'folder-tag-active': activeFolder === null}" @click="activeFolder = null">All files</span>
+					<span
+						v-for="folder in sortedFolders"
+						:key="folder.id"
+						class="folder-tag"
+						:class="{'folder-tag-active': activeFolder === folder.id}"
+						@click="activeFolder = folder.id"
+						@dblclick.stop="promptRenameFolder(folder)"
+						@mouseenter="hoveredFolder = folder.id"
+						@mouseleave="hoveredFolder = null"
+						title="Click to filter, double-click to rename"
+					>{{ folder.name }}<span v-if="hoveredFolder === folder.id" class="folder-tag-x" @click.stop="deleteFolder(folder.id)">&times;</span></span>
+					<span class="folder-tag folder-tag-add" @click="folderCreateShow = true" title="New folder">+</span>
+				</div>
+			</div>
+		</div>
+
 		<transition-group name="upload-list">
-			<div class="row upload-block" v-for="upload in uploads" :key="upload.key">
+			<div class="row upload-block" v-for="upload in filteredUploads" :key="upload.key">
 				<app-file
 					:file="upload"
+					:folder-name="upload.folder_id ? (folderMap[upload.folder_id] || '') : ''"
 					@editFile="editFile"
 					@deleteFile="deleteFile"
 					@enableFile="enableFile"
 					@pauseFile="pauseFile"
+					@filterByFolder="activeFolder = $event"
 				></app-file>
 			</div>
 		</transition-group>
@@ -257,8 +338,14 @@ var appFileView = Vue.component("app-file-view", {
 			isDragging: false,
 			isSubDragging: false,
 			editShow: false,
+			folderCreateShow: false,
+			newFolderName: "",
+			activeFolder: null,
+			hoveredFolder: null,
+			folders: [],
+			api_token: "",
 			uploads: [],
-            next_key: 0,
+			next_key: 0,
 			file_edit: {
 				create_time: 0,
 				fsize: 0,
@@ -274,19 +361,36 @@ var appFileView = Vue.component("app-file-view", {
 				sub_size: 0,
                 url_path: "",
                 redirect_path: "",
-				wdav_path: ""
+				wdav_path: "",
+				max_downloads: 0,
+				download_count: 0,
+				folder_id: 0,
+				comment: ""
             },
             server_info: {
                 disk_free: 0,
                 disk_used: 0
             },
-            curlCommand: "curl -X POST -H \"Authorization: <Upload Key>\" -F \"file=@path/to/file\" https://<Pwndrop-host>/api/v1/files",
 		};
     },
     computed: {
         isComplete () {
             return this.file_edit.name && this.file_edit.mime_type && this.file_edit.url_path && (this.file_edit.ref_sub_file == 0 || (this.file_edit.sub_name && this.file_edit.sub_mime_type));
-        }
+        },
+		filteredUploads() {
+			if (this.activeFolder === null) {
+				return this.uploads;
+			}
+			return this.uploads.filter(u => u.folder_id === this.activeFolder);
+		},
+		folderMap() {
+			var m = {};
+			this.folders.forEach(function(f) { m[f.id] = f.name; });
+			return m;
+		},
+		sortedFolders() {
+			return this.folders.slice().sort((a, b) => a.name.length - b.name.length);
+		}
     },
 	methods: {
 		copyCurl() {
@@ -300,7 +404,7 @@ var appFileView = Vue.component("app-file-view", {
             this.curlCommand = this.curlCommand + " " + filesurl;
             this.$refs.copyCurlUpload.setAttribute("data-clipboard-text", this.curlCommand);
         },
-        doShuffle() {
+ 		doShuffle() {
 			this.uploads = _.shuffle(this.uploads);
 		},
 		handleFiles($event) {
@@ -355,6 +459,10 @@ var appFileView = Vue.component("app-file-view", {
 					is_paused: false,
                     sub_name: "",
                     sub_file: null,
+					max_downloads: 0,
+					download_count: 0,
+					folder_id: 0,
+					comment: ""
 				};
 				vm.uploads.push(item);
 				this.next_key += 1;
@@ -383,7 +491,6 @@ var appFileView = Vue.component("app-file-view", {
 						console.log("item_id: " + item_id);
 						var i = vm.findFileIndexById(item_id);
 						if (i != -1) {
-							//vm.uploads[i] = response.data.data;
 							var it = response.data.data;
 							var ut = vm.uploads[i];
 
@@ -394,19 +501,11 @@ var appFileView = Vue.component("app-file-view", {
                             ut.mime_type = it.mime_type;
                             ut.sub_mime_type = it.sub_mime_type;
                             ut.orig_mime_type = it.orig_mime_type;
+							ut.max_downloads = it.max_downloads || 0;
+							ut.download_count = it.download_count || 0;
+							ut.folder_id = it.folder_id || 0;
+							ut.comment = it.comment || "";
 							ut.progress = 100;
-
-							//it.progress = 100;
-							//it.key = vm.uploads[i].key;
-							//console.log("it.key:", it.key);
-							//vm.uploads[i] = it;
-							//vm.uploads[i].key = vm.next_key;
-							//vm.next_key += 1;
-							//vm.uploads[i].id = item_id;
-							//vm.uploads.splice(i, 1, it);
-                            //vm.uploads[i].progress = 100;
-                            
-							//vm.uploads.sort((a, b) => a.key - b.key);
                         }
                         this.syncServerInfo();
 
@@ -502,7 +601,7 @@ var appFileView = Vue.component("app-file-view", {
                             f.sub_name = it.name;
                             console.log(f);
                         }
-                        
+
                         this.syncServerInfo();
 					})
 					.catch(error => console.log(error));
@@ -523,6 +622,10 @@ var appFileView = Vue.component("app-file-view", {
 			this.file_edit.redirect_path = this.uploads[i].redirect_path;
 			this.file_edit.wdav_path = this.uploads[i].wdav_path;
 			this.file_edit.ref_sub_file = this.uploads[i].ref_sub_file;
+			this.file_edit.max_downloads = this.uploads[i].max_downloads || 0;
+			this.file_edit.download_count = this.uploads[i].download_count || 0;
+			this.file_edit.folder_id = this.uploads[i].folder_id || 0;
+			this.file_edit.comment = this.uploads[i].comment || "";
 			this.file_edit.sub_name = "<unknown>";
 			this.file_edit.sub_size = 0;
 			this.file_edit.sub_ctime = 0;
@@ -534,8 +637,6 @@ var appFileView = Vue.component("app-file-view", {
 			} else {
 				this.file_edit.ref_sub_file = 0;
 			}
-			//this.$refs.editModal.modal("show");
-			//this.edit_show = true;
 			this.$bvModal.show("edit-modal");
 		},
 		updateFile() {
@@ -556,7 +657,10 @@ var appFileView = Vue.component("app-file-view", {
 						redirect_path: this.file_edit.redirect_path,
                         mime_type: this.file_edit.mime_type,
                         sub_mime_type: this.file_edit.sub_mime_type,
-						sub_name: this.file_edit.sub_name
+						sub_name: this.file_edit.sub_name,
+						max_downloads: this.file_edit.max_downloads,
+						folder_id: this.file_edit.folder_id,
+						comment: this.file_edit.comment
 					},
 					{
 						headers: {
@@ -576,7 +680,10 @@ var appFileView = Vue.component("app-file-view", {
 						vm.uploads[i].url_path = f.url_path;
 						vm.uploads[i].redirect_path = f.redirect_path;
                         vm.uploads[i].mime_type = f.mime_type;
-                        vm.uploads[i].sub_mime_type = f.sub_mime_type;                       
+                        vm.uploads[i].sub_mime_type = f.sub_mime_type;
+						vm.uploads[i].max_downloads = f.max_downloads;
+						vm.uploads[i].folder_id = f.folder_id;
+						vm.uploads[i].comment = f.comment;
 					}
 				})
 				.catch(error => {
@@ -682,6 +789,15 @@ var appFileView = Vue.component("app-file-view", {
 			});
 			return ret;
 		},
+		findFolderIndexById(id) {
+			var ret = -1;
+			this.folders.forEach(function(it, i) {
+				if (it.id == id) {
+					ret = i;
+				}
+			});
+			return ret;
+		},
 		refresh() {
 			var t = this;
 			axios
@@ -712,7 +828,134 @@ var appFileView = Vue.component("app-file-view", {
                 .catch(error => {
                     console.log(error);
                 });
-        }
+        },
+		refreshFolders() {
+			var vm = this;
+			axios
+				.get(vm.url + "/folders")
+				.then(response => {
+					var data = response.data.data;
+					vm.folders = data.folders || [];
+				})
+				.catch(error => console.log(error));
+		},
+		createFolder() {
+			var vm = this;
+			if (!vm.newFolderName.trim()) return;
+			axios
+				.post(vm.url + "/folders", { name: vm.newFolderName.trim() }, { headers: { "content-type": "application/json" } })
+				.then(response => {
+					var f = response.data.data;
+					vm.folders.push(f);
+					vm.newFolderName = "";
+					vm.folderCreateShow = false;
+				})
+				.catch(error => console.log(error));
+		},
+		promptRenameFolder(folder) {
+			var newName = prompt("Rename folder:", folder.name);
+			if (newName && newName.trim() && newName.trim() !== folder.name) {
+				this.renameFolder(folder.id, newName.trim());
+			}
+		},
+		renameFolder(id, newName) {
+			var vm = this;
+			axios
+				.put(vm.url + "/folders/" + id, { name: newName }, { headers: { "content-type": "application/json" } })
+				.then(response => {
+					var i = vm.findFolderIndexById(id);
+					if (i != -1) {
+						vm.folders[i].name = response.data.data.name;
+					}
+				})
+				.catch(error => console.log(error));
+		},
+		copyCurlUpload() {
+			var l = window.location;
+			var host = l.protocol + "//" + l.hostname;
+			if (l.port && l.port !== "443" && l.port !== "80") host += ":" + l.port;
+			var token = this.api_token || "YOUR_API_TOKEN";
+			var cmd = 'curl -X POST -H "Authorization: ' + token + '" -F "file=@/path/to/file" ' + host + "/" + Config.ApiPath + "/files";
+			this._copyText(cmd);
+		},
+		copyPsUpload() {
+			var l = window.location;
+			var host = l.protocol + "//" + l.hostname;
+			if (l.port && l.port !== "443" && l.port !== "80") host += ":" + l.port;
+			var token = this.api_token || "YOUR_API_TOKEN";
+			var uri = host + "/" + Config.ApiPath + "/files";
+			var cmd = [
+				'$uri = "' + uri + '"',
+				'$token = "' + token + '"',
+				'$file = Get-Item "C:\\path\\to\\file"',
+				'Add-Type -AssemblyName System.Net.Http',
+				'$client = [System.Net.Http.HttpClient]::new()',
+				'$client.DefaultRequestHeaders.Add("Authorization", $token)',
+				'$content = [System.Net.Http.MultipartFormDataContent]::new()',
+				'$stream = [System.IO.File]::OpenRead($file.FullName)',
+				'$sc = [System.Net.Http.StreamContent]::new($stream)',
+				'$content.Add($sc, "file", $file.Name)',
+				'$r = $client.PostAsync($uri, $content).GetAwaiter().GetResult()',
+				'$r.Content.ReadAsStringAsync().GetAwaiter().GetResult()',
+				'$stream.Dispose()'
+			].join('; ');
+			this._copyText(cmd);
+		},
+		_copyText(text) {
+			var el = document.createElement("textarea");
+			el.value = text;
+			el.style.position = "fixed";
+			el.style.opacity = "0";
+			document.body.appendChild(el);
+			el.select();
+			document.execCommand("copy");
+			document.body.removeChild(el);
+		},
+		refreshCounts() {
+			var vm = this;
+			axios.get(vm.url + "/files")
+				.then(response => {
+					var files = response.data.data.uploads;
+					if (!files) return;
+					files.forEach(function(f) {
+						var i = vm.findFileIndexById(f.id);
+						if (i !== -1) {
+							vm.uploads[i].download_count = f.download_count;
+							vm.uploads[i].downloads_left = f.downloads_left;
+							vm.uploads[i].is_enabled = f.is_enabled;
+						}
+					});
+				})
+				.catch(error => console.log(error));
+		},
+		loadApiToken() {
+			var vm = this;
+			axios.get(vm.url + "/api_token")
+				.then(response => { vm.api_token = response.data.data.token; })
+				.catch(error => console.log(error));
+		},
+		deleteFolder(id) {
+			if (!confirm("Delete this folder? Files will be moved to root.")) return;
+			var vm = this;
+			axios
+				.delete(vm.url + "/folders/" + id)
+				.then(response => {
+					var i = vm.findFolderIndexById(id);
+					if (i != -1) {
+						vm.folders.splice(i, 1);
+					}
+					// Move files locally
+					vm.uploads.forEach(function(f) {
+						if (f.folder_id === id) {
+							f.folder_id = 0;
+						}
+					});
+					if (vm.activeFolder === id) {
+						vm.activeFolder = null;
+					}
+				})
+				.catch(error => console.log(error));
+		}
 	},
 	created() {
 		var t = this;
@@ -721,16 +964,15 @@ var appFileView = Vue.component("app-file-view", {
 				t.isDragging = true;
 			}
         });
-
-        this.mainBus.$on('loggedIn', (username) => {
-            console.log("LoggedIN");
-            console.log(username);
-            this.Username = username;
-            this.doLogin = false;
-            this.isLoggedIn = true;
-            });
-            
+        window.addEventListener("keydown", function(e) {
+            if (e.key === "Escape" && t.activeFolder !== null) {
+                t.activeFolder = null;
+            }
+        });
         this.syncServerInfo();
         this.refresh();
+        this.refreshFolders();
+        this.loadApiToken();
+        setInterval(() => { this.refreshCounts(); }, 10000);
 	}
 })

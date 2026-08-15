@@ -151,13 +151,29 @@ func NewServer(host string, port_plain int, port_tls int, enable_letsencrypt boo
 	return s, nil
 }
 
+func realIP(r *http.Request) string {
+	if ip := r.Header.Get("X-Real-IP"); ip != "" {
+		return strings.TrimSpace(ip)
+	}
+	if fwd := r.Header.Get("X-Forwarded-For"); fwd != "" {
+		return strings.TrimSpace(strings.SplitN(fwd, ",", 2)[0])
+	}
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return r.RemoteAddr
+	}
+	return host
+}
+
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.Debug("%s %s", r.Method, r.URL.Path)
 
-	from_ip := r.RemoteAddr
-	if strings.Contains(from_ip, ":") {
-		from_ip = strings.Split(from_ip, ":")[0]
-	}
+//	from_ip := r.RemoteAddr
+//	if strings.Contains(from_ip, ":") {
+//		from_ip = strings.Split(from_ip, ":")[0]
+//	}
+
+        from_ip := realIP(r)
 
 	if s.isBlacklisted(from_ip) {
 		err := s.killConnection(w, -1)
@@ -201,7 +217,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				s.r.ServeHTTP(w, r)
 				return
 			}
-			
+
 			s.addBlacklistHit(from_ip)
 			if len(Cfg.GetRedirectUrl()) > 0 {
 				http.Redirect(w, r, Cfg.GetRedirectUrl(), http.StatusFound)
@@ -258,6 +274,20 @@ func (s *Server) setupRouter() {
 	sr.HandleFunc("/files/{id}/disable", api.FileDisableHandler).Methods("GET")
 	sr.HandleFunc("/files/{id}/pause", api.FilePauseHandler).Methods("GET")
 	sr.HandleFunc("/files/{id}/unpause", api.FileUnpauseHandler).Methods("GET")
+
+	sr.HandleFunc("/api_token", api.ConfigOptionsHandler).Methods("OPTIONS")
+	sr.HandleFunc("/api_token", api.ApiTokenGetHandler).Methods("GET")
+	sr.HandleFunc("/api_token/regen", api.ConfigOptionsHandler).Methods("OPTIONS")
+	sr.HandleFunc("/api_token/regen", api.ApiTokenRegenHandler).Methods("POST")
+	sr.HandleFunc("/folders", api.FolderOptionsHandler).Methods("OPTIONS")
+	sr.HandleFunc("/folders", api.FolderListHandler).Methods("GET")
+	sr.HandleFunc("/folders", api.FolderCreateHandler).Methods("POST")
+	sr.HandleFunc("/folders/{id}", api.FolderOptionsHandler).Methods("OPTIONS")
+	sr.HandleFunc("/folders/{id}", api.FolderUpdateHandler).Methods("PUT")
+	sr.HandleFunc("/folders/{id}", api.FolderDeleteHandler).Methods("DELETE")
+	sr.HandleFunc("/files/{id}/log", api.DownloadLogOptionsHandler).Methods("OPTIONS")
+	sr.HandleFunc("/files/{id}/log", api.DownloadLogGetHandler).Methods("GET")
+	sr.HandleFunc("/files/{id}/log", api.DownloadLogClearHandler).Methods("DELETE")
 	s.r.PathPrefix(fmt.Sprintf("%s", admin_path)).Handler(http.StripPrefix(fmt.Sprintf("%s", admin_path), http.FileServer(http.Dir(Cfg.GetAdminDir()))))
 }
 
@@ -278,6 +308,11 @@ func (s *Server) GetFile(url string) (*storage.DbFile, int, error) {
 	if !f.IsEnabled {
 		return nil, 404, fmt.Errorf("file is disabled")
 	}
+
+	if f.MaxDownloads > 0 && f.DownloadsLeft <= 0 {
+		return nil, 404, fmt.Errorf("download limit reached")
+	}
+
 	if f.IsPaused {
 		if f.RedirectPath != "" && is_redirect {
 			return nil, 404, fmt.Errorf("can't access facade via redirect while paused")
@@ -325,7 +360,15 @@ func (s *Server) killConnection(w http.ResponseWriter, status int) error {
 	return nil
 }
 
+func isLoopback(ip_addr string) bool {
+	ip := net.ParseIP(ip_addr)
+	return ip != nil && ip.IsLoopback()
+}
+
 func (s *Server) isBlacklisted(ip_addr string) bool {
+	if isLoopback(ip_addr) {
+		return false
+	}
 	s.bl_mtx.Lock()
 	defer s.bl_mtx.Unlock()
 
@@ -345,6 +388,9 @@ func (s *Server) isBlacklisted(ip_addr string) bool {
 }
 
 func (s *Server) addBlacklistHit(ip_addr string) {
+	if isLoopback(ip_addr) {
+		return
+	}
 	s.bl_mtx.Lock()
 	defer s.bl_mtx.Unlock()
 

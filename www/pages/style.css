@@ -2,7 +2,7 @@
     --pwn-sslite: #648cbb;
     --pwn-slite: #4a688c;
     --pwn-slite-trans: #4a688c80;
-	--pwn-lite: #314b69;
+    --pwn-lite: #314b69;
     --pwn-med: #253c54;
     --pwn-med2: #1d3146;
     --pwn-dark: #152433;
@@ -561,4 +561,67 @@ a:hover {
 
 .image-logo {
 	margin: 15px auto;
+}
+
+.file-folder-tag {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 1px 7px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: normal;
+    color: #7aadcf;
+    border: 1px solid #3a6080;
+    cursor: pointer;
+    vertical-align: middle;
+    white-space: nowrap;
+}
+.file-folder-tag:hover {
+    background: var(--pwn-lite);
+    color: #fff;
+    border-color: var(--pwn-sslite);
+}
+
+.folder-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 13px;
+    cursor: pointer;
+    border: 1px solid var(--pwn-slite);
+    color: #ccc;
+    background: transparent;
+    white-space: nowrap;
+    user-select: none;
+    transition: border-color 0.15s, color 0.15s;
+}
+.folder-tag:hover {
+    border-color: var(--pwn-sslite);
+    color: #fff;
+}
+.folder-tag-active {
+    border-color: var(--pwn-sslite);
+    background: var(--pwn-lite);
+    color: #fff;
+}
+.folder-tag-x {
+    margin-left: 5px;
+    font-size: 14px;
+    line-height: 1;
+    color: #999;
+    cursor: pointer;
+}
+.folder-tag-x:hover {
+    color: #e74c3c;
+}
+.folder-tag-add {
+    border-style: dashed;
+    color: #777;
+    padding: 2px 10px;
+    font-size: 16px;
+}
+.folder-tag-add:hover {
+    color: #2ecc71;
+    border-color: #2ecc71;
 }

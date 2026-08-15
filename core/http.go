@@ -6,10 +6,11 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
+//	"strings"
 	"time"
 
 	"github.com/kgretzky/pwndrop/log"
+        "github.com/kgretzky/pwndrop/storage"
 )
 
 const BLACKLIST_JAIL_TIME_SECS = 10 * 60
@@ -34,10 +35,11 @@ func NewHttp(srv *Server) (*Http, error) {
 func (s *Http) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	data_dir := Cfg.GetDataDir()
 
-	from_ip := r.RemoteAddr
-	if strings.Contains(from_ip, ":") {
-		from_ip = strings.Split(from_ip, ":")[0]
-	}
+//	from_ip := r.RemoteAddr
+//	if strings.Contains(from_ip, ":") {
+//		from_ip = strings.Split(from_ip, ":")[0]
+//	}
+        from_ip := realIP(r)
 
 	if r.Method == "GET" {
 		f, status, err := s.srv.GetFile(r.URL.Path)
@@ -67,7 +69,19 @@ func (s *Http) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 			defer fo.Close()
 
+			storage.FileIncrementDownload(f.ID)
+			storage.DownloadLogCreate(&storage.DbDownloadLog{
+				FileID:       f.ID,
+				IP:           from_ip,
+				UserAgent:    r.Header.Get("User-Agent"),
+				DownloadTime: time.Now().Unix(),
+			})
+
 			w.Header().Set("Content-Type", mime_type)
+
+			w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate")
+			w.Header().Set("Pragma", "no-cache")
+
 			w.WriteHeader(200)
 			io.Copy(w, fo)
 		}
