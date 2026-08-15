@@ -603,6 +603,22 @@ var appHome = Vue.component("app-home", {
         },
 
         /* ========================= */
+        /* MFA Status                 */
+        /* ========================= */
+
+	    loadMFAStatus() {
+	        axios
+	            .get(this.url + "/mfa/status")
+	            .then(response => {
+	                this.mfaEnabled = response.data.data.enabled;
+	            })
+	            .catch(error => {
+	                console.log("MFA status error:", error);
+	                this.mfaEnabled = false;
+	            });
+	    },
+	
+        /* ========================= */
         /* AUTH CHECK                 */
         /* ========================= */
 
@@ -742,43 +758,22 @@ var appHome = Vue.component("app-home", {
         /* SHOW SETTINGS              */
         /* ========================= */
 
-        showConfig() {
-
-            axios
-                .get(
-                    this.url +
-                    "/config"
-                )
-                .then(response => {
-                    console.log(
-                        response
-                    );
-
-                    var r =
-                        response.data.data;
-
-                    this.config.secret_path =
-                        r.secret_path;
-
-                    this.config.redirect_url =
-                        r.redirect_url;
-
-                    this.config.cookie_name =
-                        r.cookie_name;
-
-                    this.config.cookie_token =
-                        r.cookie_token;
-	
-                    this.$bvModal.show(
-                        "config-modal"
-                    );
-                })
-                .catch(error => {
-                    console.log(
-                        error
-                    );
-                });
-        },
+	    showConfig() {
+	        axios
+	            .get(this.url + "/config")
+	            .then(response => {
+	                var r = response.data.data;
+	                this.config.secret_path = r.secret_path;
+	                this.config.redirect_url = r.redirect_url;
+	                this.config.cookie_name = r.cookie_name;
+	                this.config.cookie_token = r.cookie_token;
+	                this.loadMFAStatus();
+	                this.$bvModal.show("config-modal");
+	            })
+	            .catch(error => {
+	                console.log(error);
+	            });
+	    },
 
 
         /* ========================= */
