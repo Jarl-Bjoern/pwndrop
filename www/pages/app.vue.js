@@ -2,28 +2,14 @@ var appHome = Vue.component("app-home", {
     template: `
 <div id="app">
 
-    <!-- TOP LEFT -->
-    <div
-        v-if="!isDead && isLoggedIn"
-        class="top-left-bar"
-    >
-        <button
-            class="btn btn-primary btn-circle"
-            @click="showConfig()"
-        >
+    <!-- TOP -->
+    <div v-if="!isDead && isLoggedIn" class="top-left-bar">
+        <button class="btn btn-primary btn-circle" @click="showConfig()">
             <i class="fas fa-cog"></i>
         </button>
     </div>
-
-    <!-- TOP RIGHT -->
-    <div
-        v-if="!isDead"
-        class="top-right-bar"
-    >
-        <button
-            class="btn btn-primary btn-circle"
-            @click="logout()"
-        >
+    <div v-if="!isDead" class="top-right-bar">
+        <button class="btn btn-primary btn-circle" @click="logout()">
             <i class="fas fa-sign-out-alt"></i>
         </button>
     </div>
