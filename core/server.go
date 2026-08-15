@@ -170,7 +170,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 //		from_ip = strings.Split(from_ip, ":")[0]
 //	}
 
-        from_ip := realIP(r)
+	from_ip := realIP(r)
 
 	if s.isBlacklisted(from_ip) {
 		err := s.killConnection(w, -1)
@@ -285,6 +285,10 @@ func (s *Server) setupRouter() {
 	sr.HandleFunc("/files/{id}/log", api.DownloadLogOptionsHandler).Methods("OPTIONS")
 	sr.HandleFunc("/files/{id}/log", api.DownloadLogGetHandler).Methods("GET")
 	sr.HandleFunc("/files/{id}/log", api.DownloadLogClearHandler).Methods("DELETE")
+
+	sr.HandleFunc("/mfa/setup", api.MFASetupHandler).Methods("POST")
+	sr.HandleFunc("/mfa/enable", api.MFAEnableHandler).Methods("POST")
+	sr.HandleFunc("/mfa/verify", api.MFAVerifyHandler).Methods("POST")
 	s.r.PathPrefix(fmt.Sprintf("%s", admin_path)).Handler(http.StripPrefix(fmt.Sprintf("%s", admin_path), http.FileServer(http.Dir(Cfg.GetAdminDir()))))
 }
 
