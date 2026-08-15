@@ -286,6 +286,7 @@ func (s *Server) setupRouter() {
 	sr.HandleFunc("/files/{id}/log", api.DownloadLogGetHandler).Methods("GET")
 	sr.HandleFunc("/files/{id}/log", api.DownloadLogClearHandler).Methods("DELETE")
 
+	sr.HandleFunc("/mfa/status", MFAStatusHandler).Methods("GET")
 	sr.HandleFunc("/mfa/setup", api.MFASetupHandler).Methods("POST")
 	sr.HandleFunc("/mfa/enable", api.MFAEnableHandler).Methods("POST")
 	sr.HandleFunc("/mfa/verify", api.MFAVerifyHandler).Methods("POST")
