@@ -296,7 +296,7 @@ var appFileView = Vue.component("app-file-view", {
                     filesurl += ":" + l.port;
             }
             filesurl += escape("/api/v1/files");
-            this.curlCommand = "curl -X POST -H \"Authorization: "   + localStorage.Authorization + "\" -F \"file=@path/to/file\" ";
+            this.curlCommand = "curl -X POST -H \"Authorization: "   + localStorage.Authorization + "\" -F \"file=@/path/to/file\"";
             this.curlCommand = this.curlCommand + " " + filesurl;
             this.$refs.copyCurlUpload.setAttribute("data-clipboard-text", this.curlCommand);
         },
