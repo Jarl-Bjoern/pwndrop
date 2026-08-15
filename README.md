@@ -5,7 +5,7 @@ Read the changes carefully.
 
 ## New capabilities
 
-### Syngia
+### Sygnia
 
 * Upgraded dependencies (golang.org/x/crypto) to address Autocert fails to sign certificate automatically with Let's encrypt.
 ```
