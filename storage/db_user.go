@@ -10,6 +10,9 @@ type DbUser struct {
 	SearchName string `json:"search_name" storm:"unique"`
 	Password   string `json:"password"`
 	ApiKey     string `json:"apikey"`
+	MFAEnabled bool   `json:"mfa_enabled"`
+	MFASecret  string `json:"mfa_secret"`
+	MFAPending string `json:"mfa_pending"`
 }
 
 func UserCreate(o *DbUser) (*DbUser, error) {
@@ -66,4 +69,13 @@ func UserGetByApiKey(apikey string) (*DbUser, error) {
 		return nil, err
 	}
 	return &o, nil
+}
+
+func UserUpdate(o *DbUser) (*DbUser, error) {
+    err := db.Save(o)
+    if err != nil {
+        return nil, err
+    }
+
+    return o, nil
 }
