@@ -862,6 +862,42 @@ func MFAVerifyHandler(w http.ResponseWriter, r *http.Request) {
 	)
 }
 
+func MFAStatusHandler(w http.ResponseWriter, r *http.Request) {
+    uid, err := AuthSession(r)
+    if err != nil {
+        DumpResponse(
+            w,
+            err.Error(),
+            http.StatusUnauthorized,
+            API_ERROR_BAD_AUTHENTICATION,
+            nil,
+        )
+        return
+    }
+
+    user, err := storage.UserGet(uid)
+    if err != nil {
+        DumpResponse(
+            w,
+            err.Error(),
+            http.StatusInternalServerError,
+            API_ERROR_FILE_DATABASE_FAILED,
+            nil,
+        )
+        return
+    }
+
+    DumpResponse(
+        w,
+        "ok",
+        http.StatusOK,
+        0,
+        map[string]bool{
+            "enabled": user.MFAEnabled,
+        },
+    )
+}
+
 /*
 func AuthOptionsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS")
