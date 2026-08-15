@@ -16,6 +16,11 @@ require (
 	gopkg.in/ini.v1 v1.42.0
 )
 
+require (
+        github.com/boombuler/barcode v1.0.1-0.20190219062509-6c824513bacc // indirect
+        github.com/pquerna/otp v1.5.0 // indirect
+)
+
 // indirect dependencies
 require (
 	github.com/DataDog/zstd v1.4.0 // indirect
