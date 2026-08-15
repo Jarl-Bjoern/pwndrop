@@ -58,6 +58,33 @@ var appLogin = Vue.component("app-login", {
 							>Login</button>
 						</div>
 					</div>
+
+<div v-if="mfaRequired" class="form-group row">
+    <label class="col-sm-12 col-form-label">
+        Authenticator code:
+    </label>
+
+    <div class="col-sm-12">
+        <input
+            type="text"
+            class="form-control"
+            v-model="MFA"
+            inputmode="numeric"
+            autocomplete="one-time-code"
+            maxlength="6"
+        >
+    </div>
+
+    <div class="col-sm-12 mt-3">
+        <button
+            class="btn btn-primary btn-lg"
+            type="button"
+            @click="verifyMFA()"
+        >
+            Verify
+        </button>
+    </div>
+</div>
 				</form>
 			</div>
 		</div>
@@ -70,8 +97,10 @@ var appLogin = Vue.component("app-login", {
 		return {
 			url: Config.Hostname + Config.AdminDir + "/" + Config.ApiPath,
 			Username: "",
-            Password: "",
-            status: "",
+			Password: "",
+			MFA: "",
+			mfaRequired: false,
+			status: "",
 		};
 	},
     computed: {
@@ -85,32 +114,74 @@ var appLogin = Vue.component("app-login", {
 				return;
 			}
 
-			axios
-				.post(
-					this.url + "/login",
-					{
-						username: this.Username,
-						password: this.Password
-					},
-					{
-						headers: {
-							"content-type": "application/json"
-						}
-					}
-				)
-				.then(response => {
-                    console.log(response);
-                    console.log(response.data.data.username);
-					this.mainBus.$emit("loggedIn", response.data.data.username);
-                    localStorage.setItem("Authorization", response.data.data.apikey);
-				})
-				.catch(error => {
-                    if (error.response.status == 401)
-                        this.status = "Incorrent username or password"
-                    else
-                        this.status = "Internal server error"
-					console.log(error);
-				});
-		}
-	}
+//			axios
+//				.post(
+//					this.url + "/login",
+//					{
+//						username: this.Username,
+//						password: this.Password
+//					},
+//					{
+//						headers: {
+//							"content-type": "application/json"
+//						}
+//					}
+//				)
+//				.then(response => {
+  //                  console.log(response);
+    //                console.log(response.data.data.username);
+//					this.mainBus.$emit("loggedIn", response.data.data.username);
+//                    localStorage.setItem("Authorization", response.data.data.apikey);
+//				})
+//				.catch(error => {
+//                    if (error.response.status == 401)
+//                        this.status = "Incorrent username or password"
+//                    else
+//                        this.status = "Internal server error"
+//					console.log(error);
+//				});
+
+
+        axios
+            .post(this.url + "/login", {
+                username: this.Username,
+                password: this.Password
+            })
+            .then(response => {
+                this.mainBus.$emit(
+                    "loggedIn",
+                    response.data.data.username
+                );
+            })
+            .catch(error => {
+                if (
+                    error.response &&
+                    error.response.data &&
+                    error.response.data.error_code == 10
+                ) {
+                    this.mfaRequired = true;
+                    this.status = "Enter your authenticator code";
+                    return;
+                }
+
+                this.status = "Incorrect username or password";
+            });
+    },
+
+    verifyMFA() {
+        axios
+            .post(this.url + "/mfa/verify", {
+                code: this.MFA
+            })
+            .then(response => {
+                this.mainBus.$emit(
+                    "loggedIn",
+                    this.Username
+                );
+            })
+            .catch(error => {
+                this.status = "Invalid authenticator code";
+            });
+    }
+}
 })
