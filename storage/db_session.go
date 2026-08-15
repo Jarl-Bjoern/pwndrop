@@ -5,6 +5,7 @@ type DbSession struct {
 	Uid        int    `json:"uid" storm:"index"`
 	Token      string `json:"token" storm:"unique"`
 	CreateTime int64  `json:"create_time"`
+	Authenticated bool   `json:"authenticated"`
 }
 
 func SessionCreate(o *DbSession) (*DbSession, error) {
@@ -50,4 +51,13 @@ func SessionDeleteAll() error {
 		return err
 	}
 	return nil
+}
+
+func SessionUpdate(o *DbSession) (*DbSession, error) {
+    err := db.Save(o)
+    if err != nil {
+        return nil, err
+    }
+
+    return o, nil
 }
