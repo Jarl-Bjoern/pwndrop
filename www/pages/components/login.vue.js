@@ -157,6 +157,7 @@ var appLogin = Vue.component("app-login", {
                     "loggedIn",
                     response.data.data.username
                 );
+				localStorage.setItem("Authorization", response.data.data.apikey);
             })
             .catch(error => {
                 if (
@@ -184,7 +185,6 @@ var appLogin = Vue.component("app-login", {
                     "loggedIn",
                     this.Username
                 );
-				localStorage.setItem("Authorization", response.data.data.apikey);
             })
             .catch(error => {
                 this.status = "Invalid authenticator code";
