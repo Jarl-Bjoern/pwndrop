@@ -371,6 +371,7 @@ var appFileView = Vue.component("app-file-view", {
                 disk_free: 0,
                 disk_used: 0
             },
+			curlCommand: "curl -X POST -H \"Authorization: <Upload Key>\" -F \"file=@/path/to/file\" https://<Pwndrop-host>/api/v1/files",
 		};
     },
     computed: {
@@ -400,7 +401,7 @@ var appFileView = Vue.component("app-file-view", {
                     filesurl += ":" + l.port;
             }
             filesurl += escape("/api/v1/files");
-            this.curlCommand = "curl -X POST -H \"Authorization: "   + localStorage.Authorization + "\" -F \"file=@/path/to/file\"";
+            this.curlCommand = "curl -X POST -H \"Authorization: " + localStorage.Authorization + "\" -F \"file=@/path/to/file\"";
             this.curlCommand = this.curlCommand + " " + filesurl;
             this.$refs.copyCurlUpload.setAttribute("data-clipboard-text", this.curlCommand);
         },
@@ -876,29 +877,6 @@ var appFileView = Vue.component("app-file-view", {
 			if (l.port && l.port !== "443" && l.port !== "80") host += ":" + l.port;
 			var token = this.api_token || "YOUR_API_TOKEN";
 			var cmd = 'curl -X POST -H "Authorization: ' + token + '" -F "file=@/path/to/file" ' + host + "/" + Config.ApiPath + "/files";
-			this._copyText(cmd);
-		},
-		copyPsUpload() {
-			var l = window.location;
-			var host = l.protocol + "//" + l.hostname;
-			if (l.port && l.port !== "443" && l.port !== "80") host += ":" + l.port;
-			var token = this.api_token || "YOUR_API_TOKEN";
-			var uri = host + "/" + Config.ApiPath + "/files";
-			var cmd = [
-				'$uri = "' + uri + '"',
-				'$token = "' + token + '"',
-				'$file = Get-Item "C:\\path\\to\\file"',
-				'Add-Type -AssemblyName System.Net.Http',
-				'$client = [System.Net.Http.HttpClient]::new()',
-				'$client.DefaultRequestHeaders.Add("Authorization", $token)',
-				'$content = [System.Net.Http.MultipartFormDataContent]::new()',
-				'$stream = [System.IO.File]::OpenRead($file.FullName)',
-				'$sc = [System.Net.Http.StreamContent]::new($stream)',
-				'$content.Add($sc, "file", $file.Name)',
-				'$r = $client.PostAsync($uri, $content).GetAwaiter().GetResult()',
-				'$r.Content.ReadAsStringAsync().GetAwaiter().GetResult()',
-				'$stream.Dispose()'
-			].join('; ');
 			this._copyText(cmd);
 		},
 		_copyText(text) {
