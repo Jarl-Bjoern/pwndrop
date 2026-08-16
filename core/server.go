@@ -194,6 +194,8 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				Path:     "/",
 				Expires:  time.Now().AddDate(0, 3, 0),
 				HttpOnly: true,
+				Secure:   true,
+				SameSite: http.SameSiteLaxMode,
 				Name:     cookie_name,
 				Value:    cookie_token,
 			}
