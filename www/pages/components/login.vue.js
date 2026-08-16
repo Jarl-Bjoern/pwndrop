@@ -146,7 +146,12 @@ var appLogin = Vue.component("app-login", {
             .post(this.url + "/login", {
                 username: this.Username,
                 password: this.Password
-            })
+            },
+			{
+				headers: {
+					"content-type": "application/json"
+				}
+			})
             .then(response => {
                 this.mainBus.$emit(
                     "loggedIn",
@@ -171,6 +176,7 @@ var appLogin = Vue.component("app-login", {
     verifyMFA() {
         axios
             .post(this.url + "/mfa/verify", {
+				challenge: this.mfaChallenge,
                 code: this.MFA
             })
             .then(response => {
@@ -178,6 +184,7 @@ var appLogin = Vue.component("app-login", {
                     "loggedIn",
                     this.Username
                 );
+				localStorage.setItem("Authorization", response.data.data.apikey);
             })
             .catch(error => {
                 this.status = "Invalid authenticator code";
