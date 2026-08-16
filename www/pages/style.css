@@ -290,6 +290,7 @@ a:hover {
     white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
+	margin-left: 40px;
 }
 
 .upload-item .settings {
